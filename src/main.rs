@@ -1,15 +1,21 @@
+//Usage: MangaReader [file]
 #![allow(non_snake_case)]
 use iced::widget::{image, row, button};
 use iced::{Element, Sandbox, Settings, Length, Alignment};
 
-use std::{io, fs};
+use std::{io, fs, env};
 use std::fs::File;
 use std::path::PathBuf;
 use zip::{read};
 
 pub fn main() -> iced::Result {
-    read::ZipArchive::new( File::open("Comic.cbr").unwrap() ).expect("Failed to read archive").extract(".files").unwrap();
-    Reader::run(Settings {id: Some(String::from("MangaReader")), window: iced::window::Settings::default(), flags: (), default_font: None, default_text_size: 16, text_multithreading: true, exit_on_close_request: true, antialiasing: true, try_opengles_first: false})
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage: MangaReader [file]");
+    } else {
+        read::ZipArchive::new( File::open(args[1]).unwrap() ).expect("Failed to read archive").extract(".files").unwrap();
+        Reader::run(Settings {id: Some(String::from("MangaReader")), window: iced::window::Settings::default(), flags: (), default_font: None, default_text_size: 16, text_multithreading: true, exit_on_close_request: true, antialiasing: true, try_opengles_first: false})
+    }
 }
 
 struct Reader {
