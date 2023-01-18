@@ -1,6 +1,6 @@
 # MangaReader
 
-##### A Simple manga reader written in Rust using Iced
+##### A Simple comic/manga reader written in Rust using Iced
 
 #### Usage:
 `MangaReader [file]`
