@@ -1,12 +1,15 @@
 //Usage: MangaReader [file]
 #![allow(non_snake_case)]
-use iced::widget::{image, row, button, tooltip, pick_list, column};
-use iced::{Element, Sandbox, Settings, Length, Alignment, alignment};
+use iced::widget::{image, row, button, column};
+use iced::{Element, Settings, Length, Alignment, Application, Command, Theme, Subscription};
+use iced::executor;
+use iced::keyboard;
+use iced_native::Event;
 
 use std::{io, fs, env, process};
 use std::fs::File;
 use std::path::PathBuf;
-use zip::{read};
+use zip::read;
 use xdg::BaseDirectories;
 
 pub fn main() -> iced::Result {
@@ -24,13 +27,16 @@ struct Reader {
 enum Message {
     NextImage,
     PreviousImage,
-    Test,
+    EventOccurred(iced_native::Event),
 }
 
-impl Sandbox for Reader {
+impl Application for Reader {
     type Message = Message;
+    type Theme = Theme;
+    type Executor = executor::Default;
+    type Flags = ();
 
-    fn new() -> Reader {
+    fn new(_flags: ()) -> (Reader, Command<Message>) {
         let args: Vec<String> = env::args().collect();
         if args.len() < 2 {
             println!("Usage: MangaReader [file]");
@@ -43,45 +49,76 @@ impl Sandbox for Reader {
         let mut var = fs::read_dir(file_path).expect("").map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
         let zip_len = var.len();
         var.sort_unstable();
-        Reader {
+        (Reader {
             page: 0,
             entries: var,
             length: zip_len,
-        }
+        },
+        Command::none())
     }
 
     fn title(&self) -> String {
         String::from("MangaReader")
     }
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message) -> Command<Message> {
         match message {
             Message::NextImage => {
                 if self.page+1 == self.length {
                     //Indicate last page
+                    Command::none()
                 } else {
                     self.page += 1;
+                    Command::none()
                 }
             }
             Message::PreviousImage => {
                 if self.page == 0 {
                     //Indicate first page
+                    Command::none()
                 } else {
                     self.page -= 1;
+                    Command::none()
                 }
             }
-            Message::Test => {
-                //Test
+            Message::EventOccurred(event) => {
+                match event {
+                    Event::Keyboard(keyboard::Event::KeyPressed { key_code, .. }) => {
+                        match key_code {
+                            keyboard::KeyCode::Right => {
+                                if self.page == self.length {
+                                    //Indicate first page
+                                    Command::none()
+                                } else {
+                                    self.page += 1;
+                                    Command::none()
+                                }
+                            },
+                            keyboard::KeyCode::Left => {
+                                if self.page == 0 {
+                                   //Indicate first page
+                                   Command::none()
+                                } else {
+                                    self.page -= 1;
+                                    Command::none()
+                                }
+                            },
+                            _ => Command::none(),
+                        }
+                    },
+                    _ => Command::none(),
+                }
             }
         }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        iced_native::subscription::events().map(Message::EventOccurred)
     }
 
     fn view(&self) -> Element<Self::Message> {
         column![
         //Top bar
-        row![
-            button("Test").on_press(Message::Test).padding([10,10]),
-        ].align_items(alignment::Horizontal::Left.into()),
 
         //Main Body
         row![
