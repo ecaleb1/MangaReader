@@ -7,10 +7,11 @@ use iced::keyboard;
 use iced_native::Event;
 
 use std::{io, fs, env, process};
-use std::fs::File;
+use std::fs::{File, remove_file, read_dir, write};
 use std::path::PathBuf;
 use zip::read;
 use xdg::BaseDirectories;
+
 
 pub fn main() -> iced::Result {
     Reader::run(Settings {id: Some(String::from("MangaReader")), window: iced::window::Settings::default(), flags: (),
@@ -42,12 +43,30 @@ impl Application for Reader {
             println!("Usage: MangaReader [file]");
             process::exit(0);
         }
+        //Define Data Directory
         let xdg_dirs = BaseDirectories::with_prefix("MangaReader").unwrap();
         let file_path = xdg_dirs.create_data_directory(".files").unwrap();
-        read::ZipArchive::new( File::open(&args[1]).expect("Couldn't find file") ).expect("Failed to read archive").extract(&file_path).unwrap();
-
-        let mut var = fs::read_dir(file_path).expect("").map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
-        let zip_len = var.len();
+        //Clear Directory
+        for file in read_dir(&file_path).unwrap() {
+            remove_file(file.unwrap().path());
+        };
+        
+        //Extract Comic from Archive
+        read::ZipArchive::new( 
+            File::open(&args[1]).expect("Couldn't find file") )
+            .expect("Failed to read archive").extract(&file_path).unwrap();
+        let mut dir = read_dir(&file_path).unwrap();
+        let mut var: Vec<PathBuf> = Vec::new();
+        
+        let x = dir.nth(0).unwrap().unwrap();
+        if x.file_type().unwrap().is_dir() {
+            var = read_dir(x.path()).unwrap()
+                .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
+        } else {
+            var = read_dir(file_path).expect("")
+                .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
+        }
+        let zip_len = var.len() - 1;
         var.sort_unstable();
         (Reader {
             page: 0,

@@ -3,5 +3,6 @@
 test
 test.rs
 .files
-Comic.cbr
+*.cbr
 .vscode
+todo.txt
