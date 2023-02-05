@@ -6,8 +6,8 @@ use iced::executor;
 use iced::keyboard;
 use iced_native::Event;
 
-use std::{io, fs, env, process};
-use std::fs::{File, remove_file, read_dir, write};
+use std::{io, env, process};
+use std::fs::{File, remove_file, read_dir, remove_dir_all};
 use std::path::PathBuf;
 use zip::read;
 use xdg::BaseDirectories;
@@ -48,24 +48,31 @@ impl Application for Reader {
         let file_path = xdg_dirs.create_data_directory(".files").unwrap();
         //Clear Directory
         for file in read_dir(&file_path).unwrap() {
-            remove_file(file.unwrap().path());
+            let path = file.unwrap().path();
+            match remove_file(&path) {
+                Ok(_)  => {},
+                Err(_) => {remove_dir_all(&path);},
+            }
         };
         
         //Extract Comic from Archive
         read::ZipArchive::new( 
             File::open(&args[1]).expect("Couldn't find file") )
             .expect("Failed to read archive").extract(&file_path).unwrap();
-        let mut dir = read_dir(&file_path).unwrap();
-        let mut var: Vec<PathBuf> = Vec::new();
         
+        //Read files into Vec
+        let mut dir = read_dir(&file_path).unwrap();
+        let mut var: Vec<PathBuf>;
+        //Check if there is an extracted folder in .files directory
         let x = dir.nth(0).unwrap().unwrap();
         if x.file_type().unwrap().is_dir() {
             var = read_dir(x.path()).unwrap()
                 .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
         } else {
-            var = read_dir(file_path).expect("")
+            var = read_dir(file_path).unwrap()
                 .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
         }
+        //Create GUI
         let zip_len = var.len() - 1;
         var.sort_unstable();
         (Reader {
