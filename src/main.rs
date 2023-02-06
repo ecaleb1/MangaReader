@@ -7,10 +7,11 @@ use iced::keyboard;
 use iced_native::Event;
 
 use std::{io, env, process};
-use std::fs::{File, remove_file, read_dir, remove_dir_all};
+use std::fs::{File, remove_file, read_dir, remove_dir_all, create_dir};
 use std::path::PathBuf;
 use zip::read;
-use xdg::BaseDirectories;
+//use xdg::BaseDirectories;
+use directories::ProjectDirs;
 
 
 pub fn main() -> iced::Result {
@@ -54,10 +55,25 @@ impl Application for Reader {
         }
         
         //Define Data Directory
-        let xdg_dirs = BaseDirectories::with_prefix("MangaReader").unwrap();
-        let file_path = xdg_dirs.create_data_directory(".files").unwrap();
+        let file_path = ProjectDirs::from("", "", "MangaReader").unwrap();
+        match &file_path.project_path().try_exists() {
+            Ok(true)  => {},
+            Ok(false) => {
+                println!("Creating: {}", &file_path.project_path().display());
+            },
+            Err(why)  => { panic!("{}", why); },
+        }
+        match &file_path.cache_dir().try_exists() {
+            Ok(true)  => {},
+            Ok(false) => { 
+                println!("Creating: {}", &file_path.cache_dir().display());
+                create_dir(&file_path.cache_dir()); 
+            },
+            Err(why)  => { panic!("{}", why); },
+        }
+
         //Clear Directory
-        for file in read_dir(&file_path).unwrap() {
+        for file in read_dir(&file_path.cache_dir()).unwrap() {
             let path = file.unwrap().path();
             match remove_file(&path) {
                 Ok(_)  => {},
@@ -68,10 +84,11 @@ impl Application for Reader {
         //Extract Comic from Archive
         read::ZipArchive::new( 
             File::open(&args[1]).expect("Couldn't find file") )
-            .expect("Failed to read archive").extract(&file_path).unwrap();
+            .expect("Failed to read archive")
+            .extract(&file_path.cache_dir()).unwrap();
         
         //Read files into Vec
-        let mut dir = read_dir(&file_path).unwrap();
+        let mut dir = read_dir(&file_path.cache_dir()).unwrap();
         let mut var: Vec<PathBuf>;
         //Check if there is an extracted folder in .files directory
         let x = dir.nth(0).unwrap().unwrap();
@@ -79,7 +96,7 @@ impl Application for Reader {
             var = read_dir(x.path()).unwrap()
                 .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
         } else {
-            var = read_dir(file_path).unwrap()
+            var = read_dir(&file_path.cache_dir()).unwrap()
                 .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
         }
 
