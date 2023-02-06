@@ -14,8 +14,17 @@ use xdg::BaseDirectories;
 
 
 pub fn main() -> iced::Result {
-    Reader::run(Settings {id: Some(String::from("MangaReader")), window: iced::window::Settings::default(), flags: (),
-    default_font: None, default_text_size: 16, text_multithreading: true, exit_on_close_request: true, antialiasing: true, try_opengles_first: false})
+    Reader::run(Settings {
+        id: Some(String::from("MangaReader")), 
+        window: iced::window::Settings::default(), 
+        flags: (),
+        default_font: None, 
+        default_text_size: 16, 
+        text_multithreading: true, 
+        exit_on_close_request: true, 
+        antialiasing: true, 
+        try_opengles_first: false
+    })
 }
 
 struct Reader {
@@ -43,6 +52,7 @@ impl Application for Reader {
             println!("Usage: MangaReader [file]");
             process::exit(0);
         }
+        
         //Define Data Directory
         let xdg_dirs = BaseDirectories::with_prefix("MangaReader").unwrap();
         let file_path = xdg_dirs.create_data_directory(".files").unwrap();
@@ -72,6 +82,7 @@ impl Application for Reader {
             var = read_dir(file_path).unwrap()
                 .map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, io::Error>>().unwrap();
         }
+
         //Create GUI
         let zip_len = var.len() - 1;
         var.sort_unstable();
@@ -107,6 +118,8 @@ impl Application for Reader {
                     Command::none()
                 }
             }
+
+            // Keyboard Input
             Message::EventOccurred(event) => {
                 match event {
                     Event::Keyboard(keyboard::Event::KeyPressed { key_code, .. }) => {
@@ -154,5 +167,9 @@ impl Application for Reader {
             button(" > ").on_press(Message::NextImage).padding([30,10]),
         ].align_items(Alignment::Center)
         ].align_items(Alignment::Center).into()
+    }
+
+    fn theme(&self) -> Theme {
+        Theme::Dark
     }
 }
