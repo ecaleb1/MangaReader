@@ -38,6 +38,7 @@ struct Reader {
 enum Message {
     NextImage,
     PreviousImage,
+    Open,
     EventOccurred(iced_native::Event),
 }
 
@@ -135,6 +136,9 @@ impl Application for Reader {
                     Command::none()
                 }
             }
+            Message::Open => {
+                Command::none()
+            }
 
             // Keyboard Input
             Message::EventOccurred(event) => {
@@ -175,7 +179,9 @@ impl Application for Reader {
     fn view(&self) -> Element<Self::Message> {
         column![
         //Top bar
-
+        row![
+            button("File").on_press(Message::Open).padding([5,10]),
+        ],
         //Main Body
         row![
             button(" < ").on_press(Message::PreviousImage).padding([30,10]),
