@@ -1,11 +1,11 @@
 //Usage: MangaReader [file]
 #![allow(non_snake_case)]
 
-use iced::widget::{image, row, button, column};
+use iced::widget::{image, row, button, column, pick_list};
 use iced::{Element, Length, Alignment, Application, Command, Theme, Subscription, Settings};
 use iced::executor;
 use iced::keyboard;
-use iced_native::Event;
+use iced_native::{Event, ContentFit};
 
 use std::{io, env, process};
 use std::fs::{File, remove_file, read_dir, remove_dir_all, create_dir};
@@ -13,6 +13,10 @@ use std::path::PathBuf;
 use zip::read;
 //use xdg::BaseDirectories;
 use directories::ProjectDirs;
+
+mod image_c;
+mod zoom;
+use crate::zoom::Zoom;
 
 pub fn main() -> iced::Result {
         Reader::run(Settings {
@@ -28,11 +32,11 @@ pub fn main() -> iced::Result {
     })
 }
 
-
 pub struct Reader {
     page: usize,
     entries: Vec<PathBuf>,
     length: usize,
+    fit: ContentFit,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +45,7 @@ pub enum Message {
     PreviousImage,
     Open,
     EventOccurred(iced_native::Event),
+    Zoom(Zoom),
 }
 
 impl Application for Reader {
@@ -109,6 +114,7 @@ impl Application for Reader {
             page: 0,
             entries: var,
             length: zip_len,
+            fit: ContentFit::Contain,
         },
         Command::none())
     }
@@ -141,6 +147,32 @@ impl Application for Reader {
                 Command::none()
             }
 
+            // Zoom Settings
+            Message::Zoom(zoom) => {
+                match zoom {
+                    Zoom::Contain => {
+                        self.fit = ContentFit::Contain;
+                        Command::none()
+                    },
+                    Zoom::Cover => {
+                        self.fit = ContentFit::Cover;
+                        Command::none()
+                    },
+                    Zoom::Fill => {
+                        self.fit = ContentFit::Fill;
+                        Command::none()
+                    },
+                    Zoom::None => {
+                        self.fit = ContentFit::None;
+                        Command::none()
+                    },
+                    Zoom::ScaleDown => {
+                        self.fit = ContentFit::ScaleDown;
+                        Command::none()
+                    }
+                }
+            }
+
             // Keyboard Input
             Message::EventOccurred(event) => {
                 match event {
@@ -151,7 +183,7 @@ impl Application for Reader {
                                     //Indicate first page
                                     Command::none()
                                 } else {
-                                    self.page += 1;
+                                    self.page += 1; 
                                     Command::none()
                                 }
                             },
@@ -178,16 +210,25 @@ impl Application for Reader {
     }
 
     fn view(&self) -> Element<Self::Message> {
+        let pick_zoom = pick_list(
+            vec![Zoom::Contain, Zoom::Cover, Zoom::Fill, Zoom::None, Zoom::ScaleDown],
+            Some(Zoom::Contain), 
+            Message::Zoom,
+            ).handle(pick_list::Handle::None);
+
         column![
         //Top bar
         row![
             button("File").on_press(Message::Open).padding([5,10]),
-        ],
+            pick_zoom
+        ].width(Length::Fill),
         //Main Body
         row![
             button(" < ").on_press(Message::PreviousImage).padding([30,10]),
-            image::Viewer::new(image::Handle::from_path(&self.entries[self.page]))
-            .width(Length::Fill).height(Length::Fill),
+            //image::Viewer::new(image::Handle::from_path(&self.entries[self.page]))
+            //image_c::Image::new(image::Handle::from_path(&self.entries[self.page]))
+            image::Image::new(image::Handle::from_path(&self.entries[self.page]))
+            .width(Length::Fill).height(Length::Fill).content_fit(self.fit),
             button(" > ").on_press(Message::NextImage).padding([30,10]),
         ].align_items(Alignment::Center)
         ].align_items(Alignment::Center).into()
