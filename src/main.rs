@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 
 use iced::widget::{image, row, button, column, pick_list};
-use iced::{Element, Length, Alignment, Application, Command, Theme, Subscription, Settings};
+use iced::{Length, Alignment, Application, Command, Subscription, Settings};
 use iced::executor;
 use iced::keyboard;
 use iced_native::{Event, ContentFit};
@@ -17,6 +17,14 @@ use directories::ProjectDirs;
 mod image_c;
 mod zoom;
 use crate::zoom::Zoom;
+
+//use iced::Theme;
+mod theme;
+use crate::theme::Theme;
+
+//use iced::Element;
+mod widget;
+use crate::widget::Element;
 
 pub fn main() -> iced::Result {
         Reader::run(Settings {
@@ -210,18 +218,22 @@ impl Application for Reader {
     }
 
     fn view(&self) -> Element<Self::Message> {
+        /*
         let pick_zoom = pick_list(
             vec![Zoom::Contain, Zoom::Cover, Zoom::Fill, Zoom::None, Zoom::ScaleDown],
             Some(Zoom::Contain), 
             Message::Zoom,
             ).handle(pick_list::Handle::None);
+        */
 
         column![
         //Top bar
+        /*
         row![
             button("File").on_press(Message::Open).padding([5,10]),
             pick_zoom
         ].width(Length::Fill),
+        */
         //Main Body
         row![
             button(" < ").on_press(Message::PreviousImage).padding([30,10]),
@@ -233,8 +245,9 @@ impl Application for Reader {
         ].align_items(Alignment::Center)
         ].align_items(Alignment::Center).into()
     }
-
+    /*
     fn theme(&self) -> Theme {
         Theme::Dark
     }
+    */
 }
