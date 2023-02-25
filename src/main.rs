@@ -14,7 +14,9 @@ use zip::read;
 //use xdg::BaseDirectories;
 use directories::ProjectDirs;
 
-mod image_c;
+//mod image_c;
+mod viewer;
+use viewer::Viewer;
 mod zoom;
 use crate::zoom::Zoom;
 
@@ -32,7 +34,7 @@ pub fn main() -> iced::Result {
         window: iced::window::Settings::default(), 
         flags: (),
         default_font: None, 
-        default_text_size: 16, 
+        default_text_size: 16., 
         text_multithreading: true, 
         exit_on_close_request: true, 
         antialiasing: true, 
