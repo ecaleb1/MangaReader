@@ -158,12 +158,20 @@ impl Application for Reader {
                             },
                             keyboard::KeyCode::Left => {
                                 if self.page == 0 {
-                                   //Indicate first page
-                                   Command::none()
+                                    //Indicate first page
+                                    Command::none()
                                 } else {
                                     self.page -= 1;
                                     Command::none()
                                 }
+                            },
+                            keyboard::KeyCode::Home => {
+                                self.page = 0;
+                                Command::none()
+                            },
+                            keyboard::KeyCode::End => {
+                                self.page = self.length;
+                                Command::none()
                             },
                             _ => Command::none(),
                         }
