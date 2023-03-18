@@ -1,11 +1,12 @@
 //Usage: MangaReader [file]
 #![allow(non_snake_case)]
 
-use iced::widget::{image, row, button};
+use iced::widget::{image, row, button, column};
 use iced::{Length, Alignment, Application, Command, Subscription, Settings};
 use iced::executor;
 use iced::keyboard;
 use iced_native::Event;
+use iced_native::window::Action::Close;
 
 use std::{env, process};
 use std::io::Read;
@@ -69,16 +70,18 @@ impl Application for Reader {
             process::exit(0);
         }
         
-        //Read files into Vec
+        //Open zip archive
         let mut archive = ZipArchive::new(
             File::open(&args[1]).expect("Failed to read file")
             ).unwrap();
 
+        //Load file names into vec & sort
         let shit = ZipArchive::new(File::open(&args[1]).unwrap()).unwrap();
         let mut names: Vec<&str> = shit.file_names().collect();
         names.sort_unstable();
         //dbg!(&names);
-            
+
+        //Load image bytes into Vec ordered using sorted names
         let mut var: Vec<Vec<u8>> = Vec::new();
         for i in 0..archive.len() {
             if archive.by_name( names[i] ).unwrap().is_file() {
@@ -173,6 +176,12 @@ impl Application for Reader {
                                 self.page = self.length;
                                 Command::none()
                             },
+                            keyboard::KeyCode::Q => {
+                                Command::single(iced_native::command::Action::Window(Close))
+                            },
+                            keyboard::KeyCode::Escape => {
+                                Command::single(iced_native::command::Action::Window(Close))
+                            },
                             _ => Command::none(),
                         }
                     },
@@ -187,6 +196,14 @@ impl Application for Reader {
     }
 
     fn view(&self) -> Element<Self::Message> {
+        column![
+        /*
+        row![
+            button("Test").padding([5,10]),
+            button("Test").padding([5,10]),
+        ].align_items(Alignment::Start),
+        */
+
         row![
             button(" < ").on_press(Message::PreviousImage).padding([30,10]),
 
@@ -196,7 +213,8 @@ impl Application for Reader {
             .width(Length::Fill).height(Length::Fill),
 
             button(" > ").on_press(Message::NextImage).padding([30,10]),
-        ].align_items(Alignment::Center).into()
+        ].align_items(Alignment::Center)
+        ].into()
     }
 
     fn theme(&self) -> Theme {
