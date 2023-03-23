@@ -312,7 +312,7 @@ where
             */
             Event::Keyboard(iced::keyboard::Event::KeyPressed { 
                 key_code: iced::keyboard::KeyCode::Up, 
-                modifiers: _ 
+                modifiers: _
             }) => {
                 let state = tree.state.downcast_mut::<State>();
 
@@ -322,7 +322,7 @@ where
             }
             Event::Keyboard(iced::keyboard::Event::KeyPressed { 
                 key_code: iced::keyboard::KeyCode::Down, 
-                modifiers: _ 
+                modifiers: _
             }) => {
                 let state = tree.state.downcast_mut::<State>();
 

@@ -205,14 +205,13 @@ impl Application for Reader {
         */
 
         row![
-            button(" < ").on_press(Message::PreviousImage).padding([30,10]),
+            //button(" < ").on_press(Message::PreviousImage).padding([30,10]),
 
             Viewer::new(
-            //image::Image::new(
                 image::Handle::from_memory( self.entries[self.page].clone() ))
             .width(Length::Fill).height(Length::Fill),
 
-            button(" > ").on_press(Message::NextImage).padding([30,10]),
+            //button(" > ").on_press(Message::NextImage).padding([30,10]),
         ].align_items(Alignment::Center)
         ].into()
     }
