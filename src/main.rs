@@ -10,19 +10,16 @@ use iced_native::window::Action::Close;
 
 use std::{env, process};
 use std::io::Read;
-use std::fs::File;
-use zip::read::ZipArchive;
-//use xdg::BaseDirectories;
-//use directories::ProjectDirs;
+use std::fs::{File, read_dir, DirEntry, ReadDir};
 
-//mod image_c;
+use zip::read::ZipArchive;
+
 mod viewer;
 use viewer::Viewer;
 
 use iced::Theme;
 //mod theme;
 //use crate::theme::Theme;
-
 use iced::Element;
 //mod widget;
 //use crate::widget::Element;
@@ -67,28 +64,33 @@ impl Application for Reader {
         let args: Vec<String> = env::args().collect();
         if args.len() < 2 {
             println!("Usage: MangaReader [file]");
-            process::exit(0);
+            process::exit(1);
         }
         
-        //Open zip archive
-        let mut archive = ZipArchive::new(
-            File::open(&args[1]).expect("Failed to read file")
-            ).unwrap();
-
-        //Load file names into vec & sort
-        let shit = ZipArchive::new(File::open(&args[1]).unwrap()).unwrap();
-        let mut names: Vec<&str> = shit.file_names().collect();
-        names.sort_unstable();
-        //dbg!(&names);
-
-        //Load image bytes into Vec ordered using sorted names
         let mut var: Vec<Vec<u8>> = Vec::new();
-        for i in 0..archive.len() {
-            if archive.by_name( names[i] ).unwrap().is_file() {
-                let mut x: Vec<u8> = Vec::new();
-                let _ = &archive.by_name( names[i] ).unwrap().read_to_end( &mut x );
-                var.push(x);
-                dbg!( &names[i] );
+        let f = File::open(&args[1]).expect("Failed to read File");
+
+        if f.metadata().unwrap().is_dir() {
+            var = sort_to_vec(read_dir(&args[1]).unwrap());
+        }
+        else {
+            //Open zip archive
+            let mut archive = ZipArchive::new(f).unwrap();
+
+            //Load file names into vec & sort
+            let shit = ZipArchive::new(File::open(&args[1]).unwrap()).unwrap();
+            let mut names: Vec<&str> = shit.file_names().collect();
+            names.sort_unstable();
+            //dbg!(&names);
+
+            //Load image bytes into Vec ordered using sorted names
+            for i in 0..archive.len() {
+                if archive.by_name( names[i] ).unwrap().is_file() {
+                    let mut x: Vec<u8> = Vec::new();
+                    let _ = &archive.by_name( names[i] ).unwrap().read_to_end( &mut x );
+                    var.push(x);
+                    dbg!( &names[i] );
+                }
             }
         }
 
@@ -205,4 +207,35 @@ impl Application for Reader {
     fn theme(&self) -> Theme {
         Theme::Dark
     }
+}
+
+
+fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
+    let mut data: Vec<DirEntry> = dir.map(|x| x.unwrap()).collect();
+    let mut out: Vec<Vec<u8>> = Vec::new();
+
+    let n = data.len();
+    let mut i = 0;
+    while i < n-1 {
+        let mut min_index = i;
+        let mut j = i + 1;
+
+        while j < n {
+            if data[j].file_name() < data[min_index].file_name() {
+                min_index = j;
+            }
+            j+=1;
+        }
+        dbg!(&data[min_index]);
+        data.swap(i, min_index);
+        i+=1;
+    }
+
+    //Read each file and push to byte vector
+    for i in 0..data.len()-1 {
+        let mut buf: Vec<u8> = Vec::new();
+        File::open(data[i].path()).unwrap().read_to_end(&mut buf);
+        out.push(buf);
+    }
+    return out;
 }

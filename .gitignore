@@ -6,3 +6,4 @@ test.rs
 *.cbr
 .vscode
 todo.txt
+comic/
