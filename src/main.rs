@@ -89,7 +89,7 @@ impl Application for Reader {
                     let mut x: Vec<u8> = Vec::new();
                     let _ = &archive.by_name( names[i] ).unwrap().read_to_end( &mut x );
                     var.push(x);
-                    dbg!( &names[i] );
+                    //dbg!( &names[i] );
                 }
             }
         }
@@ -226,7 +226,7 @@ fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
             }
             j+=1;
         }
-        dbg!(&data[min_index]);
+        //dbg!(&data[min_index]);
         data.swap(i, min_index);
         i+=1;
     }
@@ -234,7 +234,7 @@ fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
     //Read each file and push to byte vector
     for i in 0..data.len()-1 {
         let mut buf: Vec<u8> = Vec::new();
-        File::open(data[i].path()).unwrap().read_to_end(&mut buf);
+        File::open(data[i].path()).unwrap().read_to_end(&mut buf).expect("Failed to read File");
         out.push(buf);
     }
     return out;

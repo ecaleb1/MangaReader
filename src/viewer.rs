@@ -294,6 +294,7 @@ where
                 modifiers: iced::keyboard::Modifiers::CTRL 
             }) => {
                 let state = tree.state.downcast_mut::<State>();
+                dbg!(state.scale);
 
                 let image_size = image_size(
                         renderer,
@@ -301,10 +302,17 @@ where
                         state,
                         bounds.size(),
                 );
-                
+
+                let hidden_height = (image_size.height
+                        - bounds.height / 2.0)
+                        .max(0.0)
+                        .round();
+                let pos = (image_size.height*-1./ (2. * state.scale))
+                    .clamp(-hidden_height, hidden_height);
+
                 state.current_offset = Vector::new(
                     state.current_offset.x, 
-                    image_size.height
+                    pos
                 );
                 
                 event::Status::Ignored
