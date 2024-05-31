@@ -10,8 +10,6 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-iced = {version = "0.9", features = ["image"]}
-iced_native = "0.10"
-iced_core = "0.9"
-zip = "0.6"
-directories = "4.0"
+iced = {version = "0.12.1", features = ["debug", "image"]}
+zip = "2.1"
+directories = "5.0"

@@ -1,12 +1,11 @@
 use iced::{
-    application::{self, Appearance}, color,
-    widget::{button, container, text, pick_list},
-    Color, Vector,
+    application, color,
+    widget::{button, container, text},
+    Color, Vector
 };
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Theme {
-}
+pub struct Theme;
 
 
 impl application::StyleSheet for Theme {
@@ -14,7 +13,8 @@ impl application::StyleSheet for Theme {
 
     fn appearance(&self, _style: &Self::Style) -> application::Appearance {
         application::Appearance {
-            background_color: color!(0x28, 0x28, 0x28),
+            //background_color: color!(0x28, 0x28, 0x28, 0.1),
+            background_color: Color::TRANSPARENT,
             text_color: Color::BLACK,
         }
     }
@@ -37,7 +37,6 @@ impl text::StyleSheet for Theme {
 }
 
 
-
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Container {
     #[default]
@@ -49,7 +48,12 @@ impl container::StyleSheet for Theme {
 
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
         match style {
-            Container::Default => container::Appearance::default(),
+            Container::Default => container::Appearance {
+                border_color: color!(0x45, 0x85, 0x88),
+                border_width: 1.0,
+                border_radius: 4.0,
+                ..Default::default()
+            },
             Container::Bordered => container::Appearance {
                 border_color: color!(0x45, 0x85, 0x88),
                 border_width: 1.0,

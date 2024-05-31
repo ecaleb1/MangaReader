@@ -1,12 +1,12 @@
 //Usage: MangaReader [file]
 #![allow(non_snake_case)]
 
-use iced::widget::{image, row, button, column};
-use iced::{Length, Alignment, Application, Command, Subscription, Settings};
-use iced::executor;
-use iced::keyboard;
-use iced_native::Event;
-use iced_native::window::Action::Close;
+use iced::{
+    Length, Alignment, Application, Command, Settings, Subscription, Theme, Element,
+    widget::{row, image::{Image, Handle}},
+    executor, keyboard,
+    window::Id,
+};
 
 use std::{env, process};
 use std::io::Read;
@@ -14,27 +14,15 @@ use std::fs::{File, read_dir, DirEntry, ReadDir};
 
 use zip::read::ZipArchive;
 
-mod viewer;
-use viewer::Viewer;
-
-use iced::Theme;
-//mod theme;
-//use crate::theme::Theme;
-use iced::Element;
-//mod widget;
-//use crate::widget::Element;
-
 pub fn main() -> iced::Result {
         Reader::run(Settings {
         id: Some(String::from("MangaReader")), 
         window: iced::window::Settings::default(), 
         flags: (),
-        default_font: None, 
-        default_text_size: 16., 
-        text_multithreading: true, 
-        exit_on_close_request: true, 
+        //default_font: None, 
+        //default_text_size: 16., 
         antialiasing: true, 
-        try_opengles_first: false
+        ..Default::default()
     })
 }
 
@@ -50,8 +38,9 @@ pub enum Message {
     NextImage,
     PreviousImage,
     Open,
-    EventOccurred(iced_native::Event),
-    //Zoom(i32),
+    Close,
+    FirstImage,
+    LastImage,
 }
 
 impl Application for Reader {
@@ -109,6 +98,10 @@ impl Application for Reader {
         String::from("MangaReader")
     }
 
+    fn theme(&self) -> iced::Theme {
+        Theme::Dark
+    }
+
     fn update(&mut self, message: Self::Message) -> Command<Message> {
         match message {
             Message::NextImage => {
@@ -132,80 +125,48 @@ impl Application for Reader {
             Message::Open => {
                 Command::none()
             }
-
-            // Keyboard Input
-            Message::EventOccurred(event) => {
-                match event {
-                    Event::Keyboard(keyboard::Event::KeyPressed { key_code, .. }) => {
-                        match key_code {
-                            keyboard::KeyCode::Right => {
-                                if self.page == self.length {
-                                    //Indicate first page
-                                    Command::none()
-                                } else {
-                                    self.page += 1; 
-                                    Command::none()
-                                }
-                            },
-                            keyboard::KeyCode::Left => {
-                                if self.page == 0 {
-                                    //Indicate first page
-                                    Command::none()
-                                } else {
-                                    self.page -= 1;
-                                    Command::none()
-                                }
-                            },
-                            keyboard::KeyCode::Home => {
-                                self.page = 0;
-                                Command::none()
-                            },
-                            keyboard::KeyCode::End => {
-                                self.page = self.length;
-                                Command::none()
-                            },
-                            keyboard::KeyCode::Q => {
-                                Command::single(iced_native::command::Action::Window(Close))
-                            },
-                            keyboard::KeyCode::Escape => {
-                                Command::single(iced_native::command::Action::Window(Close))
-                            },
-                            _ => Command::none(),
-                        }
-                    },
-                    _ => Command::none(),
-                }
+            Message::Close => {
+                iced::window::close(Id::MAIN)
+            }
+            Message::FirstImage => {
+                self.page = 0;
+                Command::none()
+            }
+            Message::LastImage => {
+                self.page = self.length;
+                Command::none()
             }
         }
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced_native::subscription::events().map(Message::EventOccurred)
+        fn handle_hotkey(
+            key: keyboard::Key,
+            _modifiers: keyboard::Modifiers,
+        ) -> Option<Message> {
+            use keyboard::key;
+
+            match key.as_ref() {
+                keyboard::Key::Named(key::Named::Escape) => {
+                    Some(Message::Close)
+                }
+                keyboard::Key::Character("q") => Some(Message::Close),
+                keyboard::Key::Named(key::Named::ArrowRight) => Some(Message::NextImage),
+                keyboard::Key::Named(key::Named::ArrowLeft) => Some(Message::PreviousImage),
+                keyboard::Key::Named(key::Named::Home) => Some(Message::FirstImage),
+                keyboard::Key::Named(key::Named::End) => Some(Message::LastImage),
+                _ => None,
+            }
+        }
+        Subscription::batch(vec![keyboard::on_key_press(handle_hotkey)])
     }
 
     fn view(&self) -> Element<Self::Message> {
-        column![
-        /*
         row![
-            button("Test").padding([5,10]),
-            button("Test").padding([5,10]),
-        ].align_items(Alignment::Start),
-        */
-
-        row![
-            //button(" < ").on_press(Message::PreviousImage).padding([30,10]),
-
-            Viewer::new(
-                image::Handle::from_memory( self.entries[self.page].clone() ))
+            Image::new(
+                Handle::from_memory( self.entries[self.page].clone() ))
             .width(Length::Fill).height(Length::Fill),
-
-            //button(" > ").on_press(Message::NextImage).padding([30,10]),
-        ].align_items(Alignment::Center)
-        ].into()
-    }
-
-    fn theme(&self) -> Theme {
-        Theme::Dark
+        ].align_items(Alignment::Center).into()
     }
 }
 
