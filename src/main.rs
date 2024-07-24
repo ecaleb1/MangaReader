@@ -3,7 +3,7 @@
 
 use iced::{
     Length, Alignment, Application, Command, Settings, Subscription, Theme, Element,
-    widget::{row, image::{Image, Handle}},
+    widget::{row, column, image::{Image, self}, button, svg::{Svg, self}},
     executor, keyboard,
     window::Id,
 };
@@ -13,6 +13,9 @@ use std::io::Read;
 use std::fs::{File, read_dir, DirEntry, ReadDir};
 
 use zip::read::ZipArchive;
+
+const DUAL_PAGE_SVG: &'static [u8] = include_bytes!("../res/DualPage.svg");
+const MANGA_MODE_SVG: &'static [u8] = include_bytes!("../res/MangaMode.svg");
 
 pub fn main() -> iced::Result {
         Reader::run(Settings {
@@ -30,7 +33,9 @@ pub struct Reader {
     page: usize,
     entries: Vec<Vec<u8>>,
     length: usize,
-    //zoom: f32,
+    //
+    dual_page_mode: bool,
+    manga_mode: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +46,9 @@ pub enum Message {
     Close,
     FirstImage,
     LastImage,
+
+    DualPageToggle,
+    MangaModeToggle,
 }
 
 impl Application for Reader {
@@ -89,7 +97,8 @@ impl Application for Reader {
             page: 0,
             entries: var,
             length: zip_len,
-            //zoom: 1.0,
+            dual_page_mode: false,
+            manga_mode: false,
         },
         Command::none())
     }
@@ -105,22 +114,34 @@ impl Application for Reader {
     fn update(&mut self, message: Self::Message) -> Command<Message> {
         match message {
             Message::NextImage => {
-                if self.page+1 == self.length {
-                    //Indicate last page
-                    Command::none()
-                } else {
+                if self.manga_mode {
+                    if self.page > 0 {
+                        self.page -= 1;
+                    }
+                } else if self.dual_page_mode {
+                    if self.page < self.length - 2 {
+                        self.page += 2;
+                    } else if self.page < self.length - 1 {
+                        self.page += 1;
+                    }
+                } else if self.page < self.length {
                     self.page += 1;
-                    Command::none()
                 }
+                Command::none()
             }
             Message::PreviousImage => {
-                if self.page == 0 {
-                    //Indicate first page
-                    Command::none()
-                } else {
+                if self.manga_mode {
+                    if self.dual_page_mode {
+                        if self.page < self.length - 1 {
+                            self.page += 1;
+                        }
+                    } else if self.page < self.length {
+                        self.page += 1;
+                    }
+                } else if self.page > 0 {
                     self.page -= 1;
-                    Command::none()
                 }
+                Command::none()
             }
             Message::Open => {
                 Command::none()
@@ -133,7 +154,22 @@ impl Application for Reader {
                 Command::none()
             }
             Message::LastImage => {
-                self.page = self.length;
+                if self.dual_page_mode {
+                    self.page = self.length - 1;
+                } else {
+                    self.page = self.length;
+                }
+                Command::none()
+            }
+            Message::DualPageToggle => {
+                if self.page == self.length {
+                    self.page -= 1;
+                }
+                self.dual_page_mode = !self.dual_page_mode;
+                Command::none()
+            }
+            Message::MangaModeToggle => {
+                self.manga_mode = !self.manga_mode;
                 Command::none()
             }
         }
@@ -162,10 +198,33 @@ impl Application for Reader {
     }
 
     fn view(&self) -> Element<Self::Message> {
+        column![
+        //Toolbar
         row![
-            Image::new(
-                Handle::from_memory( self.entries[self.page].clone() ))
-            .width(Length::Fill).height(Length::Fill),
+            button(Svg::new(svg::Handle::from_memory(DUAL_PAGE_SVG)))
+                .on_press(Message::DualPageToggle)
+                .height(34).width(34)
+                .style(ToolbarButtonStyleSheet::new()),
+            button(Svg::new(svg::Handle::from_memory(MANGA_MODE_SVG)))
+                .on_press(Message::MangaModeToggle)
+                .height(34).width(34)
+                .style(ToolbarButtonStyleSheet::new()),
+        ].width(Length::Fill).align_items(Alignment::Start).spacing(3).padding(1),
+
+        //Body
+        if self.dual_page_mode {
+            row![
+                Image::new(image::Handle::from_memory( self.entries[self.page].clone() ))
+                    .height(Length::Fill),
+                Image::new(image::Handle::from_memory( self.entries[self.page+1].clone() ))
+                    .height(Length::Fill),
+            ]
+        } else {
+            row![
+                Image::new(image::Handle::from_memory( self.entries[self.page].clone() ))
+                    .width(Length::Fill).height(Length::Fill),
+            ]
+        }
         ].align_items(Alignment::Center).into()
     }
 }
@@ -199,4 +258,31 @@ fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
         out.push(buf);
     }
     return out;
+}
+
+pub struct ToolbarButtonStyleSheet;
+
+impl ToolbarButtonStyleSheet {
+    pub fn new() -> iced::theme::Button {
+        iced::theme::Button::Custom(Box::new(Self))
+    }
+}
+
+impl button::StyleSheet for ToolbarButtonStyleSheet {
+    type Style = iced::Theme;
+
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        let palette = style.palette();
+        let background = iced::Background::Color(iced::Color::from_rgba(0.5, 0.5, 0.5, 200.));
+        button::Appearance {
+            background: Some(background),
+            text_color: palette.text,
+            border: iced::Border {
+                color: iced::Color::from_rgb(255., 255., 255.,),
+                width: 1.0,
+                radius: 4.0.into(),
+            },
+            ..Default::default()
+        }
+    }
 }
