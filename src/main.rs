@@ -2,15 +2,20 @@
 #![allow(non_snake_case)]
 
 use iced::{
-    Length, Alignment, Application, Command, Settings, Subscription, Theme, Element,
-    widget::{row, column, image::{Image, self}, button, svg::{Svg, self}},
-    executor, keyboard,
-    window::Id,
+    keyboard, Element, Length, Subscription, Theme, Color,
+    alignment::{Horizontal, Vertical}, 
+    widget::{button, column, row}, 
+    widget::svg::{self, Svg}, 
+    widget::image::{self, Image},
+    widget::button::{Status, Style},
+    border::Border,
 };
 
-use std::{env, process};
-use std::io::Read;
-use std::fs::{File, read_dir, DirEntry, ReadDir};
+use std::{
+    env, process,
+    io::Read,
+    fs::{File, read_dir, DirEntry, ReadDir},
+};
 
 use zip::read::ZipArchive;
 
@@ -18,15 +23,10 @@ const DUAL_PAGE_SVG: &'static [u8] = include_bytes!("../res/DualPage.svg");
 const MANGA_MODE_SVG: &'static [u8] = include_bytes!("../res/MangaMode.svg");
 
 pub fn main() -> iced::Result {
-        Reader::run(Settings {
-        id: Some(String::from("MangaReader")), 
-        window: iced::window::Settings::default(), 
-        flags: (),
-        //default_font: None, 
-        //default_text_size: 16., 
-        antialiasing: true, 
-        ..Default::default()
-    })
+    iced::application("MangaReader", update, view)
+        .subscription(subscription)
+        .theme(theme)
+        .run()
 }
 
 pub struct Reader {
@@ -37,33 +37,14 @@ pub struct Reader {
     dual_page_mode: bool,
     manga_mode: bool,
 }
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    NextImage,
-    PreviousImage,
-    Open,
-    Close,
-    FirstImage,
-    LastImage,
-
-    DualPageToggle,
-    MangaModeToggle,
-}
-
-impl Application for Reader {
-    type Message = Message;
-    type Theme = Theme;
-    type Executor = executor::Default;
-    type Flags = ();
-
-    fn new(_flags: ()) -> (Reader, Command<Message>) {
+impl Default for Reader {
+    fn default() -> Reader {
         let args: Vec<String> = env::args().collect();
         if args.len() < 2 {
             println!("Usage: MangaReader [file]");
             process::exit(1);
         }
-        
+
         let mut var: Vec<Vec<u8>> = Vec::new();
         let f = File::open(&args[1]).expect("Failed to read File");
 
@@ -93,140 +74,144 @@ impl Application for Reader {
 
         //Create GUI
         let zip_len = var.len() - 1;
-        (Reader {
+        Reader {
             page: 0,
             entries: var,
             length: zip_len,
             dual_page_mode: false,
             manga_mode: false,
-        },
-        Command::none())
-    }
-
-    fn title(&self) -> String {
-        String::from("MangaReader")
-    }
-
-    fn theme(&self) -> iced::Theme {
-        Theme::Dark
-    }
-
-    fn update(&mut self, message: Self::Message) -> Command<Message> {
-        match message {
-            Message::NextImage => {
-                if self.manga_mode {
-                    if self.page > 0 {
-                        self.page -= 1;
-                    }
-                } else if self.dual_page_mode {
-                    if self.page < self.length - 2 {
-                        self.page += 2;
-                    } else if self.page < self.length - 1 {
-                        self.page += 1;
-                    }
-                } else if self.page < self.length {
-                    self.page += 1;
-                }
-                Command::none()
-            }
-            Message::PreviousImage => {
-                if self.manga_mode {
-                    if self.dual_page_mode {
-                        if self.page < self.length - 1 {
-                            self.page += 1;
-                        }
-                    } else if self.page < self.length {
-                        self.page += 1;
-                    }
-                } else if self.page > 0 {
-                    self.page -= 1;
-                }
-                Command::none()
-            }
-            Message::Open => {
-                Command::none()
-            }
-            Message::Close => {
-                iced::window::close(Id::MAIN)
-            }
-            Message::FirstImage => {
-                self.page = 0;
-                Command::none()
-            }
-            Message::LastImage => {
-                if self.dual_page_mode {
-                    self.page = self.length - 1;
-                } else {
-                    self.page = self.length;
-                }
-                Command::none()
-            }
-            Message::DualPageToggle => {
-                if self.page == self.length {
-                    self.page -= 1;
-                }
-                self.dual_page_mode = !self.dual_page_mode;
-                Command::none()
-            }
-            Message::MangaModeToggle => {
-                self.manga_mode = !self.manga_mode;
-                Command::none()
-            }
         }
     }
+}
 
-    fn subscription(&self) -> Subscription<Message> {
-        fn handle_hotkey(
-            key: keyboard::Key,
-            _modifiers: keyboard::Modifiers,
-        ) -> Option<Message> {
-            use keyboard::key;
+#[derive(Debug, Clone)]
+pub enum Message {
+    NextImage,
+    PreviousImage,
+    Open,
+    Close,
+    FirstImage,
+    LastImage,
 
-            match key.as_ref() {
-                keyboard::Key::Named(key::Named::Escape) => {
-                    Some(Message::Close)
+    DualPageToggle,
+    MangaModeToggle,
+}
+
+fn theme(_state: &Reader) -> iced::Theme {
+    Theme::Dark
+}
+
+fn update(state: &mut Reader, message: Message) {
+    match message {
+        Message::NextImage => {
+            if state.manga_mode {
+                if state.page > 0 {
+                    state.page -= 1;
                 }
-                keyboard::Key::Character("q") => Some(Message::Close),
-                keyboard::Key::Named(key::Named::ArrowRight) => Some(Message::NextImage),
-                keyboard::Key::Named(key::Named::ArrowLeft) => Some(Message::PreviousImage),
-                keyboard::Key::Named(key::Named::Home) => Some(Message::FirstImage),
-                keyboard::Key::Named(key::Named::End) => Some(Message::LastImage),
-                _ => None,
+            } else if state.dual_page_mode {
+                if state.page < state.length - 2 {
+                    state.page += 2;
+                } else if state.page < state.length - 1 {
+                    state.page += 1;
+                }
+            } else if state.page < state.length {
+                state.page += 1;
             }
         }
-        Subscription::batch(vec![keyboard::on_key_press(handle_hotkey)])
+        Message::PreviousImage => {
+            if state.manga_mode {
+                if state.dual_page_mode {
+                    if state.page < state.length - 1 {
+                        state.page += 1;
+                    }
+                } else if state.page < state.length {
+                    state.page += 1;
+                }
+            } else if state.page > 0 {
+                state.page -= 1;
+            }
+        }
+        Message::Open => {
+        }
+        Message::Close => {
+            process::exit(0);
+        }
+        Message::FirstImage => {
+            state.page = 0;
+        }
+        Message::LastImage => {
+            if state.dual_page_mode {
+                state.page = state.length - 1;
+            } else {
+                state.page = state.length;
+            }
+        }
+        Message::DualPageToggle => {
+            if state.page == state.length {
+                state.page -= 1;
+            }
+            state.dual_page_mode = !state.dual_page_mode;
+        }
+        Message::MangaModeToggle => {
+            state.manga_mode = !state.manga_mode;
+        }
     }
+}
 
-    fn view(&self) -> Element<Self::Message> {
-        column![
+fn subscription(_state: &Reader) -> Subscription<Message> {
+    fn handle_hotkey(
+        key: keyboard::Key,
+        _modifiers: keyboard::Modifiers,
+    ) -> Option<Message> {
+        use keyboard::key;
+
+        match key.as_ref() {
+            keyboard::Key::Named(key::Named::Escape) => {
+                Some(Message::Close)
+            }
+            keyboard::Key::Character("q") => Some(Message::Close),
+            keyboard::Key::Named(key::Named::ArrowRight) => Some(Message::NextImage),
+            keyboard::Key::Named(key::Named::ArrowLeft) => Some(Message::PreviousImage),
+            keyboard::Key::Named(key::Named::Home) => Some(Message::FirstImage),
+            keyboard::Key::Named(key::Named::End) => Some(Message::LastImage),
+            _ => None,
+        }
+    }
+    Subscription::batch(vec![keyboard::on_key_press(handle_hotkey)])
+}
+
+fn view(state: &Reader) -> Element<Message> {
+    column![
         //Toolbar
+        /*
         row![
             button(Svg::new(svg::Handle::from_memory(DUAL_PAGE_SVG)))
                 .on_press(Message::DualPageToggle)
-                .height(34).width(34)
-                .style(ToolbarButtonStyleSheet::new()),
+                .height(34).width(34),
+                //.style(ToolbarButtonStyleSheet::new()),
+
             button(Svg::new(svg::Handle::from_memory(MANGA_MODE_SVG)))
                 .on_press(Message::MangaModeToggle)
                 .height(34).width(34)
-                .style(ToolbarButtonStyleSheet::new()),
-        ].width(Length::Fill).align_items(Alignment::Start).spacing(3).padding(1),
+                .style(|_t, status| custom_button(status)),
+        ].width(Length::Fill).align_y(Vertical::Top).spacing(3).padding(1),
+        */
 
         //Body
-        if self.dual_page_mode {
+        if state.dual_page_mode {
             row![
-                Image::new(image::Handle::from_memory( self.entries[self.page].clone() ))
+                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
                     .height(Length::Fill),
-                Image::new(image::Handle::from_memory( self.entries[self.page+1].clone() ))
-                    .height(Length::Fill),
+                    Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
+                        .height(Length::Fill),
             ]
         } else {
             row![
-                Image::new(image::Handle::from_memory( self.entries[self.page].clone() ))
+                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
                     .width(Length::Fill).height(Length::Fill),
             ]
         }
-        ].align_items(Alignment::Center).into()
-    }
+    ].align_x(Horizontal::Center).into()
 }
 
 
@@ -260,29 +245,18 @@ fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
     return out;
 }
 
-pub struct ToolbarButtonStyleSheet;
-
-impl ToolbarButtonStyleSheet {
-    pub fn new() -> iced::theme::Button {
-        iced::theme::Button::Custom(Box::new(Self))
-    }
-}
-
-impl button::StyleSheet for ToolbarButtonStyleSheet {
-    type Style = iced::Theme;
-
-    fn active(&self, style: &Self::Style) -> button::Appearance {
-        let palette = style.palette();
-        let background = iced::Background::Color(iced::Color::from_rgba(0.5, 0.5, 0.5, 200.));
-        button::Appearance {
-            background: Some(background),
-            text_color: palette.text,
-            border: iced::Border {
-                color: iced::Color::from_rgb(255., 255., 255.,),
+fn custom_button(status: iced::widget::button::Status) -> iced::widget::button::Style {
+    match status {
+        Status::Active => Style {
+            background: Some(iced::Background::Color(Color::from_rgba(0.5, 0.5, 0.5, 200.))),
+            border: Border {
+                color: Color::from_rgb(255., 255., 255.),
                 width: 1.0,
                 radius: 4.0.into(),
             },
             ..Default::default()
-        }
+        },
+
+        _ => Style::default(),
     }
 }
