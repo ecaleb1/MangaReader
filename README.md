@@ -7,6 +7,7 @@
 
 ### Controls:
 ```
+RIGHT CLICK     Open Context Menu
 RIGHT ARROW     Next page
 LEFT ARROW      Previous page
 HOME            Jump to first page

@@ -3,13 +3,15 @@
 
 use iced::{
     keyboard, Element, Length, Subscription, Theme, Color,
-    alignment::{Horizontal, Vertical}, 
-    widget::{button, column, row}, 
+    alignment::{Horizontal, Vertical},
+    widget::{button, column, row, text, checkbox},
     widget::svg::{self, Svg}, 
     widget::image::{self, Image},
     widget::button::{Status, Style},
     border::Border,
 };
+
+use iced_aw::widget::context_menu::ContextMenu;
 
 use std::{
     env, process,
@@ -105,7 +107,9 @@ fn update(state: &mut Reader, message: Message) {
     match message {
         Message::NextImage => {
             if state.manga_mode {
-                if state.page > 0 {
+                if state.page > 1 {
+                    state.page -= 2;
+                } else if state.page > 0 {
                     state.page -= 1;
                 }
             } else if state.dual_page_mode {
@@ -121,7 +125,9 @@ fn update(state: &mut Reader, message: Message) {
         Message::PreviousImage => {
             if state.manga_mode {
                 if state.dual_page_mode {
-                    if state.page < state.length - 1 {
+                    if state.page < state.length - 2 {
+                        state.page += 2;
+                    } else if state.page < state.length - 1 {
                         state.page += 1;
                     }
                 } else if state.page < state.length {
@@ -132,6 +138,7 @@ fn update(state: &mut Reader, message: Message) {
             }
         }
         Message::Open => {
+            //todo
         }
         Message::Close => {
             process::exit(0);
@@ -181,37 +188,57 @@ fn subscription(_state: &Reader) -> Subscription<Message> {
 }
 
 fn view(state: &Reader) -> Element<Message> {
-    column![
-        //Toolbar
-        /*
-        row![
-            button(Svg::new(svg::Handle::from_memory(DUAL_PAGE_SVG)))
-                .on_press(Message::DualPageToggle)
-                .height(34).width(34),
-                //.style(ToolbarButtonStyleSheet::new()),
-
-            button(Svg::new(svg::Handle::from_memory(MANGA_MODE_SVG)))
-                .on_press(Message::MangaModeToggle)
-                .height(34).width(34)
-                .style(|_t, status| custom_button(status)),
-        ].width(Length::Fill).align_y(Vertical::Top).spacing(3).padding(1),
-        */
-
-        //Body
-        if state.dual_page_mode {
+    let body: Element<Message> = if state.dual_page_mode {
+        if state.manga_mode {
+        column![
+            row![
+                Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
+                    .height(Length::Fill),
+                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
+                    .height(Length::Fill),
+            ]
+        ].width(Length::Fill).align_x(Horizontal::Center).into()
+        } else {
+        column![
             row![
                 Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
                     .height(Length::Fill),
-                    Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
-                        .height(Length::Fill),
+                Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
+                    .height(Length::Fill),
             ]
-        } else {
-            row![
-                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
-                    .width(Length::Fill).height(Length::Fill),
-            ]
+        ].width(Length::Fill).align_x(Horizontal::Center).into()
         }
-    ].align_x(Horizontal::Center).into()
+    } else {
+        row![
+            Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
+                .width(Length::Fill).height(Length::Fill),
+        ].into()
+    };
+
+    ContextMenu::new(body, || {
+        column(vec![
+            button(row![
+                checkbox("", state.dual_page_mode),
+                Svg::new(svg::Handle::from_memory(DUAL_PAGE_SVG)),
+                text("").width(8), //Spacer
+                text("Dual Page Mode").width(130)
+            ].align_y(Vertical::Center))
+                .on_press(Message::DualPageToggle)
+                //.style(|_t, status| custom_button(status))
+                .width(220).height(35)
+                .into(),
+            button(row![
+                checkbox("", state.manga_mode),
+                Svg::new(svg::Handle::from_memory(MANGA_MODE_SVG)),
+                text("").width(8), //Spacer
+                text("Manga Mode").width(130)
+            ].align_y(Vertical::Center))
+                .on_press(Message::MangaModeToggle)
+                //.style(|_t, status| custom_button(status))
+                .width(220).height(35)
+                .into(),
+        ]).into()
+    }).into()
 }
 
 
