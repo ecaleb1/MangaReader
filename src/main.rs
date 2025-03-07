@@ -35,6 +35,7 @@ pub struct Reader {
     page: usize,
     entries: Vec<Vec<u8>>,
     length: usize,
+    screen: Screen,
     //
     dual_page_mode: bool,
     manga_mode: bool,
@@ -80,6 +81,7 @@ impl Default for Reader {
             page: 0,
             entries: var,
             length: zip_len,
+            screen: Screen::SinglePage,
             dual_page_mode: false,
             manga_mode: false,
         }
@@ -94,9 +96,13 @@ pub enum Message {
     Close,
     FirstImage,
     LastImage,
-
     DualPageToggle,
     MangaModeToggle,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum Screen {
+    SinglePage,
+    DualPage,
 }
 
 fn theme(_state: &Reader) -> iced::Theme {
@@ -157,7 +163,12 @@ fn update(state: &mut Reader, message: Message) {
             if state.page == state.length {
                 state.page -= 1;
             }
-            state.dual_page_mode = !state.dual_page_mode;
+            //state.dual_page_mode = !state.dual_page_mode;
+            if state.screen == Screen::DualPage {
+                state.screen = Screen::SinglePage;
+            } else {
+                state.screen = Screen::DualPage;
+            }
         }
         Message::MangaModeToggle => {
             state.manga_mode = !state.manga_mode;
@@ -188,35 +199,19 @@ fn subscription(_state: &Reader) -> Subscription<Message> {
 }
 
 fn view(state: &Reader) -> Element<Message> {
-    let body: Element<Message> = if state.dual_page_mode {
-        if state.manga_mode {
-        column![
-            row![
-                Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
-                    .height(Length::Fill),
-                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
-                    .height(Length::Fill),
-            ]
-        ].width(Length::Fill).align_x(Horizontal::Center).into()
-        } else {
-        column![
+    let body: Element<Message> = match state.screen {
+        Screen::SinglePage => {
             row![
                 Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
-                    .height(Length::Fill),
-                Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
-                    .height(Length::Fill),
-            ]
-        ].width(Length::Fill).align_x(Horizontal::Center).into()
-        }
-    } else {
-        row![
-            Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
-                .width(Length::Fill).height(Length::Fill),
-        ].into()
+                    .width(Length::Fill).height(Length::Fill),
+            ].into()
+        },
+        Screen::DualPage => dual_page(state),
     };
 
     ContextMenu::new(body, || {
         column(vec![
+            //Dual Page
             button(row![
                 checkbox("", state.dual_page_mode),
                 Svg::new(svg::Handle::from_memory(DUAL_PAGE_SVG)),
@@ -227,6 +222,7 @@ fn view(state: &Reader) -> Element<Message> {
                 //.style(|_t, status| custom_button(status))
                 .width(220).height(35)
                 .into(),
+            //Manga Mode
             button(row![
                 checkbox("", state.manga_mode),
                 Svg::new(svg::Handle::from_memory(MANGA_MODE_SVG)),
@@ -272,6 +268,7 @@ fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
     return out;
 }
 
+#[allow(unused)]
 fn custom_button(status: iced::widget::button::Status) -> iced::widget::button::Style {
     match status {
         Status::Active => Style {
@@ -287,3 +284,35 @@ fn custom_button(status: iced::widget::button::Status) -> iced::widget::button::
         _ => Style::default(),
     }
 }
+
+
+//Screens
+fn dual_page(state: &Reader) -> Element<Message> {
+    if state.manga_mode {
+        column![
+            row![
+                Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
+                    .height(Length::Fill),
+                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
+                    .height(Length::Fill),
+            ]
+        ].width(Length::Fill).align_x(Horizontal::Center).into()
+    } else {
+        column![
+            row![
+                Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
+                    .height(Length::Fill),
+                Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
+                    .height(Length::Fill),
+            ]
+        ].width(Length::Fill).align_x(Horizontal::Center).into()
+    }
+}
+/*
+fn long_strip(state: &Reader) -> Element<Message> {
+    column![
+        Image::new(image::Handle::from_bytes( state.entries[state.page].clone() ))
+            .width(Length::Fill)
+    ].into()
+}
+*/
