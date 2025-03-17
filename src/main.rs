@@ -163,7 +163,7 @@ fn update(state: &mut Reader, message: Message) {
             if state.page == state.length {
                 state.page -= 1;
             }
-            //state.dual_page_mode = !state.dual_page_mode;
+            state.dual_page_mode = !state.dual_page_mode;
             if state.screen == Screen::DualPage {
                 state.screen = Screen::SinglePage;
             } else {
