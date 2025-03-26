@@ -13,10 +13,14 @@ use iced::{
 
 use iced_aw::widget::context_menu::ContextMenu;
 
+use bitcode;
+use serde::{Serialize, Deserialize};
+use directories::ProjectDirs;
+
 use std::{
     env, process,
     io::Read,
-    fs::{File, read_dir, DirEntry, ReadDir},
+    fs::{File, read_dir, DirEntry, ReadDir, write, read, exists, create_dir},
 };
 
 use zip::read::ZipArchive;
@@ -31,14 +35,55 @@ pub fn main() -> iced::Result {
         .run()
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct Options {
+    dual_page_mode: bool,
+    manga_mode: bool,
+}
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            dual_page_mode: false,
+            manga_mode: false,
+        }
+    }
+}
+impl Options {
+    fn save(self) {
+        let dirs = ProjectDirs::from("com", "tvn3r", "MangaReader").unwrap();
+        let options_file = dirs.data_dir().join("options.dat");
+
+        if !dirs.data_dir().exists() {
+            create_dir(dirs.data_dir()).expect("Unable to create data dir");
+        }
+
+        write(
+            &options_file,
+            bitcode::serialize(&self).unwrap()
+        ).unwrap();
+    }
+    fn load() -> Self {
+        let dirs = ProjectDirs::from("com", "tvn3r", "MangaReader").unwrap();
+        let options_file = dirs.data_dir().join("options.dat");
+
+        if exists(&options_file).unwrap() {
+            println!("Loading options from file");
+            bitcode::deserialize(&read(&options_file).unwrap()).unwrap()
+        } else {
+            println!("Creating new options");
+            Options::default()
+        }
+    }
+}
+
 pub struct Reader {
     page: usize,
     entries: Vec<Vec<u8>>,
     length: usize,
     screen: Screen,
-    //
-    dual_page_mode: bool,
-    manga_mode: bool,
+    options: Options,
+    //dual_page_mode: bool,
+    //manga_mode: bool,
 }
 impl Default for Reader {
     fn default() -> Reader {
@@ -82,8 +127,9 @@ impl Default for Reader {
             entries: var,
             length: zip_len,
             screen: Screen::SinglePage,
-            dual_page_mode: false,
-            manga_mode: false,
+            options: Options::load(),
+            //dual_page_mode: false,
+            //manga_mode: false,
         }
     }
 }
@@ -112,13 +158,13 @@ fn theme(_state: &Reader) -> iced::Theme {
 fn update(state: &mut Reader, message: Message) {
     match message {
         Message::NextImage => {
-            if state.manga_mode {
+            if state.options.manga_mode {
                 if state.page > 1 {
                     state.page -= 2;
                 } else if state.page > 0 {
                     state.page -= 1;
                 }
-            } else if state.dual_page_mode {
+            } else if state.options.dual_page_mode {
                 if state.page < state.length - 2 {
                     state.page += 2;
                 } else if state.page < state.length - 1 {
@@ -129,8 +175,8 @@ fn update(state: &mut Reader, message: Message) {
             }
         }
         Message::PreviousImage => {
-            if state.manga_mode {
-                if state.dual_page_mode {
+            if state.options.manga_mode {
+                if state.options.dual_page_mode {
                     if state.page < state.length - 2 {
                         state.page += 2;
                     } else if state.page < state.length - 1 {
@@ -153,7 +199,7 @@ fn update(state: &mut Reader, message: Message) {
             state.page = 0;
         }
         Message::LastImage => {
-            if state.dual_page_mode {
+            if state.options.dual_page_mode {
                 state.page = state.length - 1;
             } else {
                 state.page = state.length;
@@ -163,7 +209,8 @@ fn update(state: &mut Reader, message: Message) {
             if state.page == state.length {
                 state.page -= 1;
             }
-            state.dual_page_mode = !state.dual_page_mode;
+            state.options.dual_page_mode = !state.options.dual_page_mode;
+            state.options.save();
             if state.screen == Screen::DualPage {
                 state.screen = Screen::SinglePage;
             } else {
@@ -171,7 +218,8 @@ fn update(state: &mut Reader, message: Message) {
             }
         }
         Message::MangaModeToggle => {
-            state.manga_mode = !state.manga_mode;
+            state.options.manga_mode = !state.options.manga_mode;
+            state.options.save();
         }
     }
 }
@@ -213,7 +261,7 @@ fn view(state: &Reader) -> Element<Message> {
         column(vec![
             //Dual Page
             button(row![
-                checkbox("", state.dual_page_mode),
+                checkbox("", state.options.dual_page_mode),
                 Svg::new(svg::Handle::from_memory(DUAL_PAGE_SVG)),
                 text("").width(8), //Spacer
                 text("Dual Page Mode").width(130)
@@ -224,7 +272,7 @@ fn view(state: &Reader) -> Element<Message> {
                 .into(),
             //Manga Mode
             button(row![
-                checkbox("", state.manga_mode),
+                checkbox("", state.options.manga_mode),
                 Svg::new(svg::Handle::from_memory(MANGA_MODE_SVG)),
                 text("").width(8), //Spacer
                 text("Manga Mode").width(130)
@@ -268,6 +316,7 @@ fn sort_to_vec(dir: ReadDir) -> Vec<Vec<u8>> {
     return out;
 }
 
+
 #[allow(unused)]
 fn custom_button(status: iced::widget::button::Status) -> iced::widget::button::Style {
     match status {
@@ -288,7 +337,7 @@ fn custom_button(status: iced::widget::button::Status) -> iced::widget::button::
 
 //Screens
 fn dual_page(state: &Reader) -> Element<Message> {
-    if state.manga_mode {
+    if state.options.manga_mode {
         column![
             row![
                 Image::new(image::Handle::from_bytes( state.entries[state.page+1].clone() ))
